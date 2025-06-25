@@ -4,49 +4,45 @@
 [![Paper](https://img.shields.io/badge/Paper-arXiv-red)](https://arxiv.org/abs/placeholder)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-**WSI-Agents** is a novel collaborative multi-agent system for whole slide image (WSI) analysis that integrates specialized functional agents with robust verification mechanisms to enhance both task-specific accuracy and multi-task versatility.
+**WSI-Agents** is a novel collaborative multi-agent system for whole slide image analysis that bridges the gap between accuracy and versatility in digital pathology through specialized agents and robust verification mechanisms.
 
 🎉 **Accepted at MICCAI 2025**
-
----
-
-## 🏗️ System Overview
-
-WSI-Agents consists of three main modules:
-- **Task Allocation Module**: Assigns tasks to specialized expert agents
-- **Verification Mechanism**: Internal consistency + external knowledge validation  
-- **Summary Module**: Synthesizes results with visual interpretation maps
-
-![WSI-Agents Workflow](static/image/figure1.png)
-*Need: Figure 1 - The workflow diagram*
-
-![WSI-Agents Architecture](static/image/figure2.png)  
-*Need: Figure 2 - Detailed system architecture*
-
----
-
-## 🎯 Key Features
-
-- 🎯 **Specialized Expert Agents**: Morphology, diagnosis, treatment planning, and report generation
-- ✅ **Dual Verification System**: Internal consistency checking + external knowledge validation  
-- 🧠 **Knowledge-Driven**: Leverages pathology knowledge bases and WSI foundation models
-- 📊 **Superior Performance**: Outperforms existing WSI MLLMs and medical agents by 10-17%
-- 🔍 **Visual Interpretation**: Generates comprehensive attention maps for explainable analysis
-
----
-
-## 📊 Results Highlights
-
-- **WSI-Bench**: Achieves 70.3% average performance, surpassing previous methods
-- **WSI-VQA**: Reaches 60.0% accuracy, outperforming WSI-LLaVA (55.0%) and others
-- **Report Generation**: 44.0% accuracy with significant improvements across all metrics
-- **Consistent Improvements**: 10-17% performance gains across diverse pathology tasks
 
 ---
 
 ## 📂 Resources
 
 🚀 **Code**: Coming Soon  
-📄 **Paper**: Coming Soon    
+📄 **Paper**: Coming Soon  
+
+---
+
+## 🏗️ System Overview
+
+WSI-Agents employs a collaborative multi-agent approach to address the accuracy-versatility trade-off in WSI analysis. The system integrates specialized expert agents with comprehensive verification mechanisms to ensure clinical accuracy while maintaining multi-task capabilities.
+
+![WSI-Agents Workflow](static/image/fig1.png)
+
+The architecture consists of three core components: a task allocation module that assigns specialized expert agents, verification mechanisms that ensure accuracy through internal consistency and external knowledge validation, and a summary module that synthesizes final results with visual interpretation.
+
+![WSI-Agents Architecture](static/image/wsi-agents.png)
+
+---
+
+## 🎯 Key Innovations
+
+- **Multi-Agent Collaboration**: Specialized agents for morphology, diagnosis, treatment planning, and report generation
+- **Dual Verification**: Internal consistency checking combined with external knowledge validation
+- **Knowledge Integration**: Leverages pathology knowledge bases and WSI foundation models
+- **Visual Interpretation**: Comprehensive attention maps for explainable analysis
+
+---
+
+## 📊 Performance Highlights
+
+- **WSI-Bench**: Achieves superior performance across morphological analysis, diagnosis, and treatment planning
+- **WSI-VQA**: 60.0% accuracy, outperforming existing WSI MLLMs by significant margins
+- **Report Generation**: Substantial improvements in clinical report quality and accuracy
+- **Consistent Gains**: 10-17% performance improvements across diverse pathology tasks
 
 ---
