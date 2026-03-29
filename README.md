@@ -14,6 +14,24 @@
 
 🚀 **Code**: Coming Soon  
 
+Framework Overview
+The overall framework is based on AutoGen: https://microsoft.github.io/autogen/stable//user-guide/agentchat-user-guide/quickstart.html
+
+You can refer to their official tutorial, and with the help of GPT, implementing it should be quite straightforward.
+
+External Knowledge Base
+For the external knowledge base querying, we use LangChain: https://www.langchain.com/
+
+Here's a helpful tutorial that demonstrates how to implement it: https://www.tizi365.com/topic/3555.html
+
+It's actually quite easy to set up.
+
+Text Extraction
+The text extraction from books for the knowledge base is done using PaddleOCR's layout recovery feature.
+
+
+
+
 ---
 
 ## 🏗️ System Overview
