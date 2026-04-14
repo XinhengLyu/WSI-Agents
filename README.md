@@ -51,7 +51,7 @@ The architecture consists of three core components:
 ## 🛠️ Installation
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/XinhengLyu/WSI-Agents
 cd WSI_Agents
 
 conda create -n WSI_Agents python=3.10 -y
