@@ -1,4 +1,4 @@
-# WSI-Agents: A Collaborative Multi-Agent System for Multi-Modal Whole Slide Image Analysis
+# 🤖 WSI-Agents: A Collaborative Multi-Agent System for Multi-Modal Whole Slide Image Analysis
 
 [![MICCAI 2025](https://img.shields.io/badge/MICCAI-2025-blue)](https://conferences.miccai.org/2025/en/default.asp)
 [![Paper](https://img.shields.io/badge/Paper-arXiv-red)](https://drive.google.com/file/d/1T8aTBL_-JIZpKoRbvvYmoj2JisXssQMr/view)
@@ -10,7 +10,7 @@
 
 ---
 
-## Resources
+## 📂 Resources
 
 **Framework**: Built on [AutoGen](https://microsoft.github.io/autogen/stable//user-guide/agentchat-user-guide/quickstart.html) for multi-agent orchestration.
 
@@ -22,7 +22,7 @@
 
 ---
 
-## System Overview
+## 🏗️ System Overview
 
 ![WSI-Agents Workflow](static/image/fig1.png)
 
@@ -37,7 +37,7 @@ The architecture consists of three core components:
 
 ---
 
-## Key Innovations
+## 🎯 Key Innovations
 
 - **Multi-Agent Collaboration**: Specialized agents for morphology analysis, diagnosis, treatment planning, and report generation
 - **Dual Verification**: Internal consistency checking combined with external knowledge and classifier validation
@@ -48,7 +48,7 @@ The architecture consists of three core components:
 
 > **Note**: The code is currently being organized and will be updated soon.
 
-## Installation
+## 🛠️ Installation
 
 ```bash
 git clone <repo-url>
@@ -69,7 +69,7 @@ export OPENAI_BASE_URL="https://api.openai.com/v1"
 
 ---
 
-## Building the Knowledge Base
+## 📚 Building the Knowledge Base
 
 The pre-built knowledge base is not included in this repository due to copyright restrictions on the WHO Classification of Tumours books. To build your own:
 
@@ -95,7 +95,7 @@ You can use any pathology reference text you have legal access to — the build 
 
 ---
 
-## Data Preparation
+## 📊 Data Preparation
 
 Questions and MLLM answers are stored in separate files:
 
@@ -132,7 +132,7 @@ ALL_TASKS = [
 
 ---
 
-## Usage
+## 🚀 Usage
 
 ```bash
 # Run all task types
@@ -144,20 +144,21 @@ python run_demo.py
 
 ---
 
-## Citation
+## 📝 Citation
 
 If you find this work useful, please cite:
 
 ```bibtex
-@inproceedings{wsi-agents-miccai2025,
-  title     = {WSI-Agents: A Collaborative Multi-Agent System for Multi-Modal Whole Slide Image Analysis},
-  booktitle = {Medical Image Computing and Computer Assisted Intervention (MICCAI)},
-  year      = {2025}
+@article{lyu2025wsi,
+  title={Wsi-agents: A collaborative multi-agent system for multi-modal whole slide image analysis},
+  author={Lyu, Xinheng and Liang, Yuci and Chen, Wenting and Ding, Meidan and Yang, Jiaqi and Huang, Guolin and Zhang, Daokun and He, Xiangjian and Shen, Linlin},
+  journal={arXiv preprint arXiv:2507.14680},
+  year={2025}
 }
 ```
 
 ---
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
