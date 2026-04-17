@@ -87,33 +87,35 @@ python knowledge_base_demo/build_kb.py
 The set of MLLMs is fully configurable. In `config.py`, `configure_task()` builds a `MLLM_PATHS` dict that maps a **model key** to its **answer file**:
 
 ```python
-# config.py — MLLM_PATHS (edit here to add / swap models)
+# config.py — MLLM_PATHS are derived automatically from the task name
+# For task_name="Treatment", configure_task builds:
 MLLM_PATHS = {
-    "mllm_1": "/path/to/MLLMs_output/mllm1-answers.jsonl",              # shared across tasks
-    "mllm_2": "/path/to/MLLMs_output/mllm2-answers.jsonl",              # shared across tasks
-    "mllm_3": "/path/to/MLLMs_output/<Task>-mllm3-answers.jsonl",       # task-specific
-    # add more models: "mllm_4": "/path/to/MLLMs_output/<Task>-mllm4-answers.jsonl"
+    "mllm_1": ".../MLLMs_output/Treatment-mllm1-answers.jsonl",
+    "mllm_2": ".../MLLMs_output/Treatment-mllm2-answers.jsonl",
+    "mllm_3": ".../MLLMs_output/Treatment-mllm3-answers.jsonl",
+    "mllm_4": ".../MLLMs_output/Treatment-mllm4-answers.jsonl",  # fallback to mllm3 if absent
 }
 ```
 
-The keys (`mllm_1`, `mllm_2`, …) are just labels used internally. Each Expert Agent reads a specific subset of these keys; changing which file a key points to is all that's needed to swap a model.
+The keys (`mllm_1`, `mllm_2`, …) are just labels used internally. Each Expert Agent reads a specific subset of these keys; to override a path at runtime use `Config.update_mllm_path("mllm_1", new_path)`.
 
 ### Task-specific model assignments
 
-Different question types use different MLLM subsets:
+All four task types use the same pipeline with three MLLM inputs:
 
 | Task route | Keys read | Output path |
 |---|---|---|
 | **Morphology** | `mllm_1`, `mllm_2`, `mllm_3` | → Full verification pipeline |
 | **Diagnosis** | `mllm_1`, `mllm_2`, `mllm_3` | → Full verification pipeline |
-| **Treatment** | `mllm_1`, `mllm_2`, `mllm_3`, `mllm_4` | → Full verification pipeline |
+| **Treatment** | `mllm_1`, `mllm_2`, `mllm_3` | → Full verification pipeline |
 | **Report** | `mllm_1`, `mllm_2`, `mllm_3` | → Full verification pipeline |
 
-To run a specific task and point it at a particular answer file:
+To run a specific task:
 
 ```python
-Config.configure_task("Treatment", "Treatment-questions.jsonl", "Treatment-mllm3-answers.jsonl")
-# Config.QUESTIONS_PATH     == ".../questions/Treatment-questions.jsonl"
+Config.configure_task("Treatment", "Treatment-questions.jsonl")
+# Config.QUESTIONS_PATH       == ".../questions/Treatment-questions.jsonl"
+# Config.MLLM_PATHS["mllm_1"] == ".../MLLMs_output/Treatment-mllm1-answers.jsonl"
 # Config.MLLM_PATHS["mllm_3"] == ".../MLLMs_output/Treatment-mllm3-answers.jsonl"
 ```
 
@@ -126,8 +128,8 @@ For each question the pipeline receives:
 | # | Input | Source | Used by |
 |---|-------|--------|---------|
 | 1 | Pathology question text | `questions/<Task>-questions.jsonl` → `prompt` field | all agents |
-| 2 | MLLM_1 pre-stored answer | `MLLMs_output/mllm1-answers.jsonl` → `text` field | all verification + integration |
-| 3 | MLLM_2 pre-stored answer | `MLLMs_output/mllm2-answers.jsonl` → `text` field | all verification + integration |
+| 2 | MLLM_1 pre-stored answer | `MLLMs_output/<Task>-mllm1-answers.jsonl` → `text` field | all verification + integration |
+| 3 | MLLM_2 pre-stored answer | `MLLMs_output/<Task>-mllm2-answers.jsonl` → `text` field | all verification + integration |
 | 4 | MLLM_3 pre-stored answer | `MLLMs_output/<Task>-mllm3-answers.jsonl` → `text` field | all verification + integration |
 | 5 | Classifier predictions (CONCH, MIZero, TITAN) | `classifier_outputs/*.jsonl` | EKV/Consensus only |
 | 6 | Medical knowledge base | `medical_kb_structured/` (Chroma vector DB) | EKV/Fact only |
@@ -178,7 +180,7 @@ The MLLM keys read per route:
 |-------|----------------|
 | `morphology` | mllm_1, mllm_2, mllm_3 |
 | `diagnosis` | mllm_1, mllm_2, mllm_3 |
-| `treatment` | mllm_1, mllm_2, mllm_3, mllm_4 |
+| `treatment` | mllm_1, mllm_2, mllm_3 |
 | `report` | mllm_1, mllm_2, mllm_3 |
 
 > **Adding a new task type:** add an Expert Agent in `MLLM_agent.py`, register it in `MedicalAnalysisSystem._register_agents()`, add the keyword mapping to `TaskAllocationAgent`'s system prompt, add an entry to `ALL_TASKS` in `run_experiments.py`, and declare which `MLLM_PATHS` keys it reads. Model files are configured entirely in `Config.MLLM_PATHS`.
@@ -210,7 +212,7 @@ Each Expert Agent reads the MLLM keys it needs from `Config.MLLM_PATHS`, wraps t
 |-------|----------------|-------------|
 | **MorphologyAgent** | `mllm_1`, `mllm_2`, `mllm_3` | `consistency` + `verification` + `classifier_verification` + `integration` |
 | **DiagnosisAgent** | `mllm_1`, `mllm_2`, `mllm_3` | `consistency` + `verification` + `classifier_verification` + `integration` |
-| **TreatmentAgent** | `mllm_1`, `mllm_2`, `mllm_3`, `mllm_4` | `consistency` + `verification` + `classifier_verification` + `integration` |
+| **TreatmentAgent** | `mllm_1`, `mllm_2`, `mllm_3` | `consistency` + `verification` + `classifier_verification` + `integration` |
 | **ReportAgent** | `mllm_1`, `mllm_2`, `mllm_3` | `consistency` + `verification` + `classifier_verification` + `integration` |
 
 ---

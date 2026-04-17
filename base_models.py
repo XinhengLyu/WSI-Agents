@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List
 from pydantic import BaseModel
 
 class TaskAllocationRequest(BaseModel):
@@ -18,8 +18,7 @@ class AnalysisTask(BaseModel):
     question: str
     mllm1_response: str
     mllm2_response: str
-    mllm3_response: Optional[str] = None
-    mllm4_response: Optional[str] = None
+    mllm3_response: str
 
 
 class ModelAnalysis(BaseModel):
@@ -79,7 +78,7 @@ class ClassifierVerification(BaseModel):
     multi_modal_consistency: float  # MCS
     classifier_internal_consistency: float  # CIS
     classifier_verification_score: float  # CVS
-    classifier_predictions:List[ClassifierPrediction]
+    classifier_predictions: List[ClassifierPrediction]
 
 
 class ClassifierVerificationResult(BaseModel):
@@ -91,20 +90,3 @@ class ClassifierVerificationResult(BaseModel):
     original_task: AnalysisTask
 
 
-class TreatmentAnswerSelection(BaseModel):
-    """Selected treatment answer"""
-    question_id: str
-    question: str
-    selected_answer: Dict
-    original_responses: Dict[str, str]
-
-class VerificationReview(BaseModel):
-    """Review from a verification agent"""
-    reviewer_id: str
-    verdict: str
-    reasoning: str
-    suggestion: str = ""
-
-class VerificationPanelResult(BaseModel):
-    content: str
-    final_conclusion: str

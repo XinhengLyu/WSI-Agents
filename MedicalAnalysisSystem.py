@@ -7,7 +7,7 @@ from InternalValidation import InternalConsistencyAgent
 from ExternalValidation import ClassifierVerificationAgent, KnowledgeVerificationAgent
 from IntegrationAgent import IntegrationAgent
 from MLLM_agent import MorphologyAgent, DiagnosisAgent, TreatmentAgent, ReportAgent
-from agent import TaskAllocationAgent, VerificationPanelAgent, AnswerSelectionAgent
+from agent import TaskAllocationAgent
 from base_models import TaskAllocationRequest
 from model_client import create_model_client
 from knowledge_base import MedicalKnowledgeBuild, MedicalKnowledgeBase
@@ -37,7 +37,7 @@ class MedicalAnalysisSystem:
         qa_chain = knowledge_build.create_qa_chain()
         self.knowledge_base = MedicalKnowledgeBase(qa_chain)
 
-        # MLLM response reader — reloaded each time configure_task changes paths
+        # MLLM response reader — loads all model files defined in Config.MLLM_PATHS
         self.response_reader = JsonlResponseReader(Config.MLLM_PATHS)
 
         # Classifier reader — file names match what's on disk
@@ -46,135 +46,83 @@ class MedicalAnalysisSystem:
         )
         self.classifier_models = ["Conch", "MIZero", "TITAN"]
 
-    async def setup(self):
-        """Setup all agents"""
-        try:
-            self.runtime = SingleThreadedAgentRuntime()
-            await self._register_agents()
-            print("All agents registered successfully.")
-            return True
-        except Exception as e:
-            print(f"Error during system setup: {str(e)}")
-            return False
+    async def setup(self) -> bool:
+        """Validate the system can run (readers and knowledge base loaded in __init__)."""
+        return True
 
     async def analyze(self, question_id: str, question: str) -> None:
-        """Run analysis workflow"""
+        """Run analysis workflow for a single question.
+
+        A fresh runtime is created for each call so the same system object
+        can be reused across multiple questions without state leakage.
+        """
+        runtime = SingleThreadedAgentRuntime()
+        await self._register_agents(runtime)
         try:
             print(f"\n=== Starting Analysis for Question {question_id} ===")
             print(f"Question: {question}")
 
-            self.runtime.start()
+            runtime.start()
 
-            request = TaskAllocationRequest(
-                question_id=question_id,
-                question=question,
-            )
-
-            await self.runtime.publish_message(
-                request,
+            await runtime.publish_message(
+                TaskAllocationRequest(question_id=question_id, question=question),
                 TopicId("task_allocation", source="system")
             )
 
-            await self.runtime.stop_when_idle()
+            await runtime.stop_when_idle()
             print("\nAnalysis workflow completed.")
-            return None
 
         except Exception as e:
             print(f"Analysis failed: {str(e)}")
             raise
         finally:
             try:
-                await self.runtime.stop()
-                print("Runtime stopped.")
-                await self.runtime.close()
-                print("Runtime closed.")
+                await runtime.stop()
+                await runtime.close()
             except Exception as e:
                 print(f"Warning: Error during runtime cleanup: {str(e)}")
 
-    async def _register_agents(self):
-        """Register all required agents"""
+    async def _register_agents(self, runtime: SingleThreadedAgentRuntime):
+        """Register all agents on the given runtime."""
         await TaskAllocationAgent.register(
-            self.runtime, "task_allocation",
+            runtime, "task_allocation",
             lambda: TaskAllocationAgent(self.model_client)
         )
-        print("Task allocation agent registered.")
-
-        await IntegrationAgent.register(
-            self.runtime, "integration",
-            lambda: IntegrationAgent(self.model_clients)
-        )
-        print("Integration agent registered.")
-
-        await InternalConsistencyAgent.register(
-            self.runtime, "consistency",
-            lambda: InternalConsistencyAgent(self.model_client)
-        )
-        print("Consistency evaluation agent registered.")
-
-        await KnowledgeVerificationAgent.register(
-            self.runtime, "verification",
-            lambda: KnowledgeVerificationAgent(self.model_client, self.knowledge_base)
-        )
-        print("Knowledge verification agent registered.")
-
         await MorphologyAgent.register(
-            self.runtime, "morphology",
+            runtime, "morphology",
             lambda: MorphologyAgent(self.model_client, self.response_reader)
         )
-        print("Morphology agent registered.")
-
         await DiagnosisAgent.register(
-            self.runtime, "diagnosis",
+            runtime, "diagnosis",
             lambda: DiagnosisAgent(self.model_client, self.response_reader)
         )
-        print("Diagnosis agent registered.")
-
+        await TreatmentAgent.register(
+            runtime, "treatment",
+            lambda: TreatmentAgent(self.model_client, self.response_reader)
+        )
+        await ReportAgent.register(
+            runtime, "report",
+            lambda: ReportAgent(self.model_client, self.response_reader)
+        )
+        await InternalConsistencyAgent.register(
+            runtime, "consistency",
+            lambda: InternalConsistencyAgent(self.model_client)
+        )
+        await KnowledgeVerificationAgent.register(
+            runtime, "verification",
+            lambda: KnowledgeVerificationAgent(self.model_client, self.knowledge_base)
+        )
         await ClassifierVerificationAgent.register(
-            self.runtime, "classifier_verification",
+            runtime, "classifier_verification",
             lambda: ClassifierVerificationAgent(
                 self.model_client, self.classifier_reader, self.classifier_models
             )
         )
-        print("Classifier verification agent registered.")
-
-        await TreatmentAgent.register(
-            self.runtime, "treatment",
-            lambda: TreatmentAgent(self.model_client, self.response_reader)
+        await IntegrationAgent.register(
+            runtime, "integration",
+            lambda: IntegrationAgent(self.model_clients)
         )
-        print("Treatment agent registered.")
 
-        await ReportAgent.register(
-            self.runtime, "report",
-            lambda: ReportAgent(self.model_client, self.response_reader)
-        )
-        print("Report agent registered.")
-
-        await AnswerSelectionAgent.register(
-            self.runtime, "answer_selection",
-            lambda: AnswerSelectionAgent(self.model_client)
-        )
-        print("Answer selection agent registered.")
-
-        await VerificationPanelAgent.register(
-            self.runtime, "answer_verification",
-            lambda: VerificationPanelAgent(self.model_clients, self.model_client)
-        )
-        print("Answer verification agent registered.")
-
-    def _format_final_result(self, result: IntegrationResult) -> str:
-        output = [
-            "\n=== Final Analysis Report ===\n",
-            "Model Reliability Scores:",
-            f"MLLM_1: {result.mllm1_reliability.final_score:.2f}",
-            f"MLLM_2: {result.mllm2_reliability.final_score:.2f}",
-            f"MLLM_3: {result.mllm3_reliability.final_score:.2f}\n",
-            "Final Conclusion:",
-            result.final_conclusion,
-            "\nSupporting Evidence:",
-        ]
-        for evidence in result.supporting_evidence:
-            output.append(f"- {evidence}")
-        return "\n".join(output)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -214,8 +162,8 @@ async def run_task(task_name: str, questions_file: str):
 
     Config.configure_task(task_name, questions_file)
 
-    missing = [p for p in [Config.QUESTIONS_PATH] + list(Config.MLLM_PATHS.values())
-               if not os.path.exists(p)]
+    task_mllm_paths = [Config.MLLM_PATHS[k] for k in Config.TASK_MLLM_KEYS[task_name]]
+    missing = [p for p in [Config.QUESTIONS_PATH] + task_mllm_paths if not os.path.exists(p)]
     if missing:
         print(f"[SKIP] Missing files: {missing} — skipping task {task_name}.")
         return

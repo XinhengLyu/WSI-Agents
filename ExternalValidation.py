@@ -1,12 +1,16 @@
 import json
+from typing import Dict, List
 
-from ScoreCalculator import *
+from ScoreCalculator import ScoreCalculator
 from knowledge_base import MedicalKnowledgeBase
 from autogen_core import MessageContext, RoutedAgent, TopicId, message_handler, \
     type_subscription
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
-from base_models import *
-from ClassifierResultsReader import ClassifierResponseReader,ClassifierPrediction
+from base_models import (
+    AnalysisTask, VerificationResult, KnowledgeValidation,
+    ClassifierVerification, ClassifierVerificationResult, ClassifierPrediction,
+)
+from ClassifierResultsReader import ClassifierResponseReader
 
 
 @type_subscription(topic_type="classifier_verification")
@@ -152,10 +156,7 @@ class ClassifierVerificationAgent(RoutedAgent):
             # Extract diagnosis from each MLLM response
             mllm1_diagnosis = await self._extract_diagnosis("MLLM_1", message.mllm1_response)
             mllm2_diagnosis = await self._extract_diagnosis("MLLM_2", message.mllm2_response)
-            mllm3_diagnosis = await self._extract_diagnosis(
-                "MLLM_3",
-                message.mllm3_response if message.mllm3_response else message.mllm4_response
-            )
+            mllm3_diagnosis = await self._extract_diagnosis("MLLM_3", message.mllm3_response)
 
             # Calculate verification scores
             mllm1_verification = await self._calculate_verification_scores(mllm1_diagnosis, classifier_predictions)
@@ -318,10 +319,7 @@ class KnowledgeVerificationAgent(RoutedAgent):
                 "MLLM_2",
                 message.mllm2_response
             )
-            mllm3_diagnosis = await self._extract_diagnosis(
-                "MLLM_3",
-                message.mllm3_response if message.mllm3_response else message.mllm4_response
-            )
+            mllm3_diagnosis = await self._extract_diagnosis("MLLM_3", message.mllm3_response)
 
             # Query knowledge base for each diagnosis
             mllm1_kb_info = self._knowledge_base.get_diagnosis_info(mllm1_diagnosis['diagnosis'])

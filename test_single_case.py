@@ -48,13 +48,12 @@ async def main():
 
     # Show what was written
     if os.path.exists(Config.REFINED_RESPONSES_PATH):
-        lines = open(Config.REFINED_RESPONSES_PATH).readlines()
-        # Find the line for this case
-        for line in lines:
-            d = json.loads(line)
-            if d['question_id'] == case['id']:
-                print(f"Output saved: {d['text'][:150]}...")
-                break
+        with open(Config.REFINED_RESPONSES_PATH, encoding='utf-8') as f:
+            for line in f:
+                d = json.loads(line)
+                if d['question_id'] == case['id']:
+                    print(f"Output saved: {d['text'][:150]}...")
+                    break
 
 
 if __name__ == "__main__":

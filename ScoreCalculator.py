@@ -31,12 +31,22 @@ class ScoreCalculator:
     def calculate_final_score(
             knowledge_score: float,
             consistency_score: float,
-            classifier_score: float
+            classifier_score: float = None
     ) -> float:
-        """Calculate final score including classifier verification"""
-        W1 = 0.3  # Weight for knowledge score
-        W2 = 0.2  # Weight for consistency score
-        W3 = 0.5  # Weight for classifier verification score
+        """Calculate final reliability score.
+
+        If classifier_score is None (e.g. Treatment task where classifier
+        verification is skipped), only ICV and EKV/Fact scores are used,
+        re-weighted to sum to 1.0: W_k=0.6, W_l=0.4.
+        """
+        if classifier_score is None:
+            return max(0.0, min(1.0,
+                0.6 * knowledge_score +
+                0.4 * consistency_score
+            ))
+        W1 = 0.3  # knowledge score
+        W2 = 0.2  # consistency score
+        W3 = 0.5  # classifier verification score
         return max(0.0, min(1.0,
             W1 * knowledge_score +
             W2 * consistency_score +

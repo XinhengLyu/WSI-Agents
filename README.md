@@ -107,10 +107,11 @@ autogen/
 │   ├── Treatment-questions.jsonl
 │   └── Report-questions.jsonl
 │
-├── MLLMs_output/                   One file per model, shared across all tasks
-│   ├── mllm1-answers.jsonl             {"question_id", "text"}
-│   ├── mllm2-answers.jsonl
-│   └── mllm3-answers.jsonl
+├── MLLMs_output/                   One file per model, each covers all question IDs {"question_id", "text"}
+│   ├── modelA-answers.jsonl
+│   ├── modelB-answers.jsonl
+│   ├── modelC-answers.jsonl
+│   └── ...                         (add as many models as needed)
 │
 └── classifier_outputs/             {"question_id", "label", "confidence"}
     ├── Conch.jsonl
@@ -118,23 +119,24 @@ autogen/
     └── TITAN.jsonl
 ```
 
-Configure MLLM answer file paths in `config.py` (shared across all tasks):
+Configure all model file paths in `config.py`, then specify which three models each task uses:
 
 ```python
-MLLM1_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm1-answers.jsonl")
-MLLM2_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm2-answers.jsonl")
-MLLM3_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm3-answers.jsonl")
-```
+# Register all available model answer files
+MLLM_PATHS = {
+    "mllm_1": os.path.join(MLLM_OUTPUT_DIR, "modelA-answers.jsonl"),
+    "mllm_2": os.path.join(MLLM_OUTPUT_DIR, "modelB-answers.jsonl"),
+    "mllm_3": os.path.join(MLLM_OUTPUT_DIR, "modelC-answers.jsonl"),
+    # add more models here
+}
 
-Configure task entries in `run_experiments.py`:
-
-```python
-ALL_TASKS = [
-    ("Morphology", "Morphology-questions.jsonl"),
-    ("Diagnosis",  "Diagnosis-questions.jsonl"),
-    ("Treatment",  "Treatment-questions.jsonl"),
-    ("Report",     "Report-questions.jsonl"),
-]
+# Select which three models each task reads
+TASK_MLLM_KEYS = {
+    "Morphology": ["mllm_1", "mllm_2", "mllm_3"],
+    "Diagnosis":  ["mllm_1", "mllm_2", "mllm_3"],
+    "Treatment":  ["mllm_1", "mllm_2", "mllm_3"],
+    "Report":     ["mllm_1", "mllm_2", "mllm_3"],
+}
 ```
 
 ---

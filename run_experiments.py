@@ -52,7 +52,11 @@ async def main():
         print("-" * 72)
         for name, qf in ALL_TASKS:
             Config.configure_task(name, qf)
-            total = sum(1 for _ in open(Config.QUESTIONS_PATH, encoding='utf-8')) if os.path.exists(Config.QUESTIONS_PATH) else 0
+            if os.path.exists(Config.QUESTIONS_PATH):
+                with open(Config.QUESTIONS_PATH, encoding='utf-8') as _f:
+                    total = sum(1 for _ in _f)
+            else:
+                total = 0
             done = len(Config.get_processed_ids())
             left = total - done
             out_name = os.path.basename(Config.REFINED_RESPONSES_PATH)

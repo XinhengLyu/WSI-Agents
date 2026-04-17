@@ -1,9 +1,10 @@
 import json
+from typing import Dict
 from autogen_core import MessageContext, RoutedAgent, TopicId, message_handler, \
     type_subscription
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
-from base_models import *
-from ScoreCalculator import *
+from base_models import AnalysisTask, ModelAnalysis, ConsistencyResult
+from ScoreCalculator import ScoreCalculator
 
 
 @type_subscription(topic_type="consistency")
@@ -85,7 +86,7 @@ class InternalConsistencyAgent(RoutedAgent):
             {message.mllm2_response}
 
             === MLLM_3 Response ===
-            {message.mllm3_response if message.mllm3_response else message.mllm4_response}
+            {message.mllm3_response}
 
             EVALUATION CRITERIA:
 
