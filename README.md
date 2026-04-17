@@ -101,32 +101,39 @@ Questions and MLLM answers are stored in separate files:
 
 ```
 autogen/
-├── questions/                          One file per task type {"question_id", "prompt"}
+├── questions/                      One file per task type {"question_id", "prompt"}
 │   ├── Morphology-questions.jsonl
 │   ├── Diagnosis-questions.jsonl
 │   ├── Treatment-questions.jsonl
 │   └── Report-questions.jsonl
 │
-├── MLLMs_output/                       One file per model {"question_id", "text"}
-│   ├── mllm1-answers.jsonl             Shared across all tasks
-│   ├── mllm2-answers.jsonl             Shared across all tasks
-│   ├── Morphology-mllm3-answers.jsonl  Task-specific
-│   └── ...
+├── MLLMs_output/                   One file per model, shared across all tasks
+│   ├── mllm1-answers.jsonl             {"question_id", "text"}
+│   ├── mllm2-answers.jsonl
+│   └── mllm3-answers.jsonl
 │
-└── classifier_outputs/                 {"question_id", "label", "confidence"}
+└── classifier_outputs/             {"question_id", "label", "confidence"}
     ├── Conch.jsonl
     ├── MIZero.jsonl
     └── TITAN.jsonl
 ```
 
-Configure model file paths in `config.py` and task entries in `run_experiments.py`:
+Configure MLLM answer file paths in `config.py` (shared across all tasks):
+
+```python
+MLLM1_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm1-answers.jsonl")
+MLLM2_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm2-answers.jsonl")
+MLLM3_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm3-answers.jsonl")
+```
+
+Configure task entries in `run_experiments.py`:
 
 ```python
 ALL_TASKS = [
-    ("Morphology", "Morphology-questions.jsonl", "Morphology-mllm3-answers.jsonl"),
-    ("Diagnosis",  "Diagnosis-questions.jsonl",  "Diagnosis-mllm3-answers.jsonl"),
-    ("Treatment",  "Treatment-questions.jsonl",  "Treatment-mllm3-answers.jsonl"),
-    ("Report",     "Report-questions.jsonl",     "Report-mllm3-answers.jsonl"),
+    ("Morphology", "Morphology-questions.jsonl"),
+    ("Diagnosis",  "Diagnosis-questions.jsonl"),
+    ("Treatment",  "Treatment-questions.jsonl"),
+    ("Report",     "Report-questions.jsonl"),
 ]
 ```
 

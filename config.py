@@ -19,38 +19,33 @@ class Config:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # ── Shared MLLM answer files (same across all tasks) ──────────────────
-    # Swap these paths to change which model is used as MLLM_1 / MLLM_2.
+    # Swap these paths to change which model is used as MLLM_1 / MLLM_2 / MLLM_3.
     MLLM1_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm1-answers.jsonl")
     MLLM2_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm2-answers.jsonl")
+    MLLM3_ANSWERS_PATH = os.path.join(MLLM_OUTPUT_DIR, "mllm3-answers.jsonl")
 
     # ── Per-task state (updated by configure_task) ────────────────────────
     _task_name             = ""
     QUESTIONS_PATH         = ""   # input: question list  {"question_id", "prompt"}
-    MLLM3_ANSWERS_PATH     = ""   # input: MLLM_3 answers {"question_id", "text"}
-    MLLM4_ANSWERS_PATH     = ""   # input: MLLM_4 answers (optional, defaults to MLLM_3)
+    MLLM4_ANSWERS_PATH     = os.path.join(MLLM_OUTPUT_DIR, "mllm4-answers.jsonl")
     REFINED_RESPONSES_PATH = ""   # output {"question_id", "text"}
 
     MLLM_PATHS: dict = {}
 
     # ── Task configuration ────────────────────────────────────────────────
     @classmethod
-    def configure_task(cls, task_name: str, questions_file: str, answers_file: str):
+    def configure_task(cls, task_name: str, questions_file: str):
         """Switch Config to a specific task type.
 
-        Questions and MLLM_3 answers are kept in separate files.
-        MLLM_1 and MLLM_2 are shared across all tasks.
+        All MLLM answer files are shared across tasks and defined above.
+        Only the questions file changes per task.
 
         Args:
             task_name:      Human-readable label, e.g. "Treatment"
-            questions_file: JSONL filename in MLLMs_output/ containing questions
-                            {"question_id", "prompt"}
-            answers_file:   JSONL filename in MLLMs_output/ containing MLLM_3 answers
-                            {"question_id", "text"}
+            questions_file: JSONL filename in questions/ {"question_id", "prompt"}
         """
-        cls._task_name         = task_name
-        cls.QUESTIONS_PATH     = os.path.join(cls.QUESTIONS_DIR,   questions_file)
-        cls.MLLM3_ANSWERS_PATH = os.path.join(cls.MLLM_OUTPUT_DIR, answers_file)
-        cls.MLLM4_ANSWERS_PATH = cls.MLLM3_ANSWERS_PATH
+        cls._task_name     = task_name
+        cls.QUESTIONS_PATH = os.path.join(cls.QUESTIONS_DIR, questions_file)
         cls.MLLM_PATHS = {
             "mllm_1": cls.MLLM1_ANSWERS_PATH,
             "mllm_2": cls.MLLM2_ANSWERS_PATH,
@@ -111,6 +106,7 @@ class Config:
             'mllm_3': 'MLLM3_ANSWERS_PATH',
             'mllm_4': 'MLLM4_ANSWERS_PATH',
         }.get(model_key)
+
         if attr:
             setattr(cls, attr, new_path)
         cls.MLLM_PATHS[model_key] = new_path

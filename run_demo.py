@@ -24,13 +24,13 @@ from MedicalAnalysisSystem import MedicalAnalysisSystem, read_jsonl
 
 # ── Task catalogue (same as run_experiments.py) ───────────────────────────────
 ALL_TASKS = [
-    ("Morphology", "Morphology-questions.jsonl", "Morphology-mllm3-answers.jsonl"),
-    ("Diagnosis",  "Diagnosis-questions.jsonl",  "Diagnosis-mllm3-answers.jsonl"),
-    ("Treatment",  "Treatment-questions.jsonl",  "Treatment-mllm3-answers.jsonl"),
-    ("Report",     "Report-questions.jsonl",     "Report-mllm3-answers.jsonl"),
+    ("Morphology", "Morphology-questions.jsonl"),
+    ("Diagnosis",  "Diagnosis-questions.jsonl"),
+    ("Treatment",  "Treatment-questions.jsonl"),
+    ("Report",     "Report-questions.jsonl"),
 ]
 
-TASK_MAP = {name: (qf, af) for name, qf, af in ALL_TASKS}
+TASK_MAP = {name: qf for name, qf in ALL_TASKS}
 
 # ── Demo output directory (separate from production output/) ──────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -38,18 +38,16 @@ DEMO_OUTPUT_DIR = os.path.join(_HERE, "..", "demo_output")
 os.makedirs(DEMO_OUTPUT_DIR, exist_ok=True)
 
 
-async def demo_task(task_name: str, questions_file: str, answers_file: str) -> bool:
+async def demo_task(task_name: str, questions_file: str) -> bool:
     """Run 1 case for a task type, writing to demo_output/.
 
     Returns True if a case was found and processed, False otherwise.
     """
     print(f"\n{'=' * 70}")
-    print(f"  DEMO: {task_name}")
-    print(f"  Questions : {questions_file}")
-    print(f"  MLLM_3    : {answers_file}")
+    print(f"  DEMO: {task_name}  ({questions_file})")
     print(f"{'=' * 70}")
 
-    Config.configure_task(task_name, questions_file, answers_file)
+    Config.configure_task(task_name, questions_file)
     demo_output_path = os.path.join(DEMO_OUTPUT_DIR, f"demo_{task_name}.jsonl")
     Config.REFINED_RESPONSES_PATH = demo_output_path
 
@@ -100,8 +98,7 @@ async def main():
         tasks_to_run = []
         for name in args:
             if name in TASK_MAP:
-                qf, af = TASK_MAP[name]
-                tasks_to_run.append((name, qf, af))
+                tasks_to_run.append((name, TASK_MAP[name]))
             else:
                 print(f"Unknown task '{name}'. Valid: {list(TASK_MAP)}")
                 sys.exit(1)
@@ -111,9 +108,9 @@ async def main():
     print(f"Running demo for {len(tasks_to_run)} task type(s). Output → demo_output/")
 
     results = {}
-    for task_name, questions_file, answers_file in tasks_to_run:
+    for task_name, questions_file in tasks_to_run:
         try:
-            ok = await demo_task(task_name, questions_file, answers_file)
+            ok = await demo_task(task_name, questions_file)
             results[task_name] = "OK" if ok else "SKIPPED"
         except Exception as e:
             print(f"\n[ERROR] {task_name}: {e}")

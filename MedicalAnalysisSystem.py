@@ -206,15 +206,13 @@ def read_jsonl(file_path: str, skip_processed: bool = True) -> list:
     return test_cases
 
 
-async def run_task(task_name: str, questions_file: str, answers_file: str):
+async def run_task(task_name: str, questions_file: str):
     """Run the full analysis pipeline for one task type."""
     print(f"\n{'=' * 70}")
-    print(f"  TASK: {task_name}")
-    print(f"  Questions : {questions_file}")
-    print(f"  MLLM_3    : {answers_file}")
+    print(f"  TASK: {task_name}  ({questions_file})")
     print(f"{'=' * 70}")
 
-    Config.configure_task(task_name, questions_file, answers_file)
+    Config.configure_task(task_name, questions_file)
 
     missing = [p for p in [Config.QUESTIONS_PATH] + list(Config.MLLM_PATHS.values())
                if not os.path.exists(p)]
@@ -245,15 +243,14 @@ async def run_task(task_name: str, questions_file: str, answers_file: str):
 async def main():
     """Run a single task type. For batch runs use run_experiments.py instead."""
     import sys
-    # CLI: python MedicalAnalysisSystem.py Treatment Treatment-questions.jsonl Treatment-mllm3-answers.jsonl
-    if len(sys.argv) == 4:
-        task_name, questions_file, answers_file = sys.argv[1], sys.argv[2], sys.argv[3]
+    # CLI: python MedicalAnalysisSystem.py Treatment Treatment-questions.jsonl
+    if len(sys.argv) == 3:
+        task_name, questions_file = sys.argv[1], sys.argv[2]
     else:
         task_name      = "Treatment"
         questions_file = "Treatment-questions.jsonl"
-        answers_file   = "Treatment-mllm3-answers.jsonl"
 
-    await run_task(task_name, questions_file, answers_file)
+    await run_task(task_name, questions_file)
 
 
 if __name__ == "__main__":

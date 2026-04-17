@@ -3,7 +3,7 @@ Quick smoke test: run exactly 1 unprocessed case from a given task type
 to verify the full pipeline works end-to-end.
 
 Usage:
-    python test_single_case.py [task_name] [questions_file] [answers_file]
+    python test_single_case.py [task_name] [questions_file]
 
 Defaults to Treatment task.
 """
@@ -24,10 +24,9 @@ from MedicalAnalysisSystem import (
 async def main():
     task_name      = sys.argv[1] if len(sys.argv) > 1 else "Treatment"
     questions_file = sys.argv[2] if len(sys.argv) > 2 else "Treatment-questions.jsonl"
-    answers_file   = sys.argv[3] if len(sys.argv) > 3 else "Treatment-mllm3-answers.jsonl"
 
     print(f"=== Smoke test: {task_name} ===")
-    Config.configure_task(task_name, questions_file, answers_file)
+    Config.configure_task(task_name, questions_file)
 
     test_cases = read_jsonl(Config.QUESTIONS_PATH)
     if not test_cases:
