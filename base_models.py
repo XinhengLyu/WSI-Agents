@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 class TaskAllocationRequest(BaseModel):
@@ -50,10 +50,14 @@ class VerificationResult(BaseModel):
     mllm3_validation: KnowledgeValidation
 
 class ModelReliability(BaseModel):
-    """Reliability assessment for a single model"""
+    """Reliability assessment for a single model.
+
+    classifier_score is None when the task does not use classifier verification
+    (e.g. Treatment) — distinct from a real CVS of 0.0.
+    """
     knowledge_score: float
     consistency_score: float
-    classifier_score: float
+    classifier_score: Optional[float]
     final_score: float
     assessment_details: str
 

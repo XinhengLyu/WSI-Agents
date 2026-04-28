@@ -1,7 +1,6 @@
 import json
 from typing import Dict, List
 
-from ScoreCalculator import ScoreCalculator
 from knowledge_base import MedicalKnowledgeBase
 from autogen_core import MessageContext, RoutedAgent, TopicId, message_handler, \
     type_subscription
@@ -10,7 +9,7 @@ from base_models import (
     AnalysisTask, VerificationResult, KnowledgeValidation,
     ClassifierVerification, ClassifierVerificationResult, ClassifierPrediction,
 )
-from ClassifierResultsReader import ClassifierResponseReader
+from ClassifierResponseReader import ClassifierResponseReader
 
 
 @type_subscription(topic_type="classifier_verification")
@@ -232,7 +231,6 @@ class KnowledgeVerificationAgent(RoutedAgent):
         super().__init__("Verifies findings against medical knowledge")
         self._model_client = model_client
         self._knowledge_base = knowledge_base
-        self._calculator = ScoreCalculator()
 
         # System message for diagnosis extraction
         self._diagnosis_extraction_message = SystemMessage(content="""You are a medical diagnosis extraction expert.
@@ -271,7 +269,7 @@ class KnowledgeVerificationAgent(RoutedAgent):
                 }
             }""")
 
-    async def _extract_diagnosis(self, model_name: str, findings: str) -> Dict:
+    async def _extract_diagnosis(self, model_name: str, findings: str, ctx: MessageContext) -> Dict:
         """Extract diagnostic finding from model findings"""
         try:
             extraction_prompt = f"""
@@ -294,7 +292,7 @@ class KnowledgeVerificationAgent(RoutedAgent):
                     UserMessage(content=extraction_prompt, source=self.id.type)
                 ],
                 json_output=True,
-                cancellation_token=None
+                cancellation_token=ctx.cancellation_token,
             )
 
             result = json.loads(response.content)
@@ -311,15 +309,9 @@ class KnowledgeVerificationAgent(RoutedAgent):
             print(f"\n{'-' * 80}\nKnowledgeVerificationAgent Starting Verification...")
 
             # Extract diagnoses from each model's findings
-            mllm1_diagnosis = await self._extract_diagnosis(
-                "MLLM_1",
-                message.mllm1_response
-            )
-            mllm2_diagnosis = await self._extract_diagnosis(
-                "MLLM_2",
-                message.mllm2_response
-            )
-            mllm3_diagnosis = await self._extract_diagnosis("MLLM_3", message.mllm3_response)
+            mllm1_diagnosis = await self._extract_diagnosis("MLLM_1", message.mllm1_response, ctx)
+            mllm2_diagnosis = await self._extract_diagnosis("MLLM_2", message.mllm2_response, ctx)
+            mllm3_diagnosis = await self._extract_diagnosis("MLLM_3", message.mllm3_response, ctx)
 
             # Query knowledge base for each diagnosis
             mllm1_kb_info = self._knowledge_base.get_diagnosis_info(mllm1_diagnosis['diagnosis'])

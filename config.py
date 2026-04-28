@@ -16,8 +16,6 @@ class Config:
     KB_DIR          = os.path.join(DATA_ROOT, "medical_kb_structured")
     KB_BASE_DIR     = os.path.join(DATA_ROOT, "medical_knowledge_base")
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-
     # ── MLLM answer files (one file per model, shared across all tasks) ───
     # Each file contains answers for every question_id.
     # Edit the filenames here to point to your actual model output files.
@@ -38,7 +36,7 @@ class Config:
     }
 
     # ── Per-task state (updated by configure_task) ────────────────────────
-    _task_name             = ""
+    TASK_NAME              = ""   # current task ("Morphology", "Diagnosis", "Treatment", "Report")
     QUESTIONS_PATH         = ""   # input: question list {"question_id", "prompt"}
     REFINED_RESPONSES_PATH = ""   # output {"question_id", "text"}
 
@@ -54,7 +52,8 @@ class Config:
         if task_name not in cls.TASK_MLLM_KEYS:
             raise ValueError(f"Unknown task '{task_name}'. Valid: {list(cls.TASK_MLLM_KEYS)}")
 
-        cls._task_name             = task_name
+        os.makedirs(cls.OUTPUT_DIR, exist_ok=True)
+        cls.TASK_NAME              = task_name
         cls.QUESTIONS_PATH         = os.path.join(cls.QUESTIONS_DIR, questions_file)
         cls.REFINED_RESPONSES_PATH = os.path.join(
             cls.OUTPUT_DIR, f"refined_responses_{task_name}.jsonl"
@@ -65,22 +64,26 @@ class Config:
     def get_processed_ids(cls) -> set:
         """Return set of already-processed question_ids for the current task."""
         processed: set = set()
-        if os.path.exists(cls.REFINED_RESPONSES_PATH):
-            try:
-                with open(cls.REFINED_RESPONSES_PATH, 'r', encoding='utf-8') as fh:
-                    for line in fh:
-                        line = line.strip()
-                        if line:
-                            processed.add(json.loads(line)['question_id'])
-            except Exception:
-                pass
+        if not os.path.exists(cls.REFINED_RESPONSES_PATH):
+            return processed
+        try:
+            with open(cls.REFINED_RESPONSES_PATH, 'r', encoding='utf-8') as fh:
+                for line in fh:
+                    line = line.strip()
+                    if line:
+                        processed.add(json.loads(line)['question_id'])
+        except (OSError, json.JSONDecodeError, KeyError) as e:
+            print(f"Warning: failed to read processed IDs from "
+                  f"{cls.REFINED_RESPONSES_PATH}: {e}")
         return processed
 
     # ── Path update helpers ───────────────────────────────────────────────
     @classmethod
     def update_refined_responses_path(cls, new_path: str):
         cls.REFINED_RESPONSES_PATH = new_path
-        os.makedirs(os.path.dirname(new_path), exist_ok=True)
+        parent = os.path.dirname(new_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
 
     @classmethod
     def update_questions_path(cls, new_path: str):

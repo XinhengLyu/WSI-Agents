@@ -11,8 +11,8 @@ from agent import TaskAllocationAgent
 from base_models import TaskAllocationRequest
 from model_client import create_model_client
 from knowledge_base import MedicalKnowledgeBuild, MedicalKnowledgeBase
-from ResponseReader import JsonlResponseReader
-from ClassifierResultsReader import ClassifierResponseReader
+from JsonlResponseReader import JsonlResponseReader
+from ClassifierResponseReader import ClassifierResponseReader
 from config import Config
 
 
@@ -20,13 +20,18 @@ class MedicalAnalysisSystem:
     """Multi-agent medical image analysis system"""
 
     def __init__(self, model_name: str = "gpt-4o"):
-        """Initialize the medical analysis system"""
+        """Initialize the medical analysis system.
+
+        The reviewer panel uses four distinct LLMs accessed through the same
+        OpenAI-compatible base URL. Override the per-key model identifiers if
+        your gateway uses different names.
+        """
         self.model_client = create_model_client(model_name)
         self.model_clients = {
             "gpt-4o":   create_model_client("gpt-4o"),
-            "Claude":   create_model_client("gpt-4o"),
-            "Gemini":   create_model_client("gpt-4o"),
-            "DeepSeek": create_model_client("gpt-4o"),
+            "Claude":   create_model_client("claude-3-5-sonnet-20241022"),
+            "Gemini":   create_model_client("gemini-1.5-pro"),
+            "DeepSeek": create_model_client("deepseek-chat"),
         }
 
         # Knowledge base — use absolute paths from Config

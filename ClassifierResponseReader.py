@@ -35,11 +35,19 @@ class ClassifierResponseReader:
             raise
 
     def get_predictions(self, model_names: List[str], question_id: str) -> List[ClassifierPrediction]:
+        """Look up classifier predictions for a question across the named models.
+
+        question_id format expected: "<task_prefix>_<slide_id>.<ext>"
+            e.g. "Diagnosis_TCGA-AB-1234-01Z.svs" -> slide key "TCGA-AB-1234-01Z"
+        Classifier JSONL files key predictions by the bare slide id.
+        """
         results = []
 
         def extract_search_key(question: str) -> str:
+            # Strip the task-name prefix (everything up to the first "_")
             if "_" in question:
                 question = question.split("_", 1)[1]
+            # Strip the 4-character file extension (".svs", ".tif", etc.)
             if len(question) > 4:
                 question = question[:-4]
             return question

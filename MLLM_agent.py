@@ -3,7 +3,7 @@ from autogen_core import MessageContext, RoutedAgent, TopicId, message_handler, 
     type_subscription
 from autogen_core.models import ChatCompletionClient, SystemMessage
 from base_models import TaskAllocation, AnalysisTask
-from ResponseReader import JsonlResponseReader
+from JsonlResponseReader import JsonlResponseReader
 from config import Config
 
 

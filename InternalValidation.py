@@ -4,7 +4,6 @@ from autogen_core import MessageContext, RoutedAgent, TopicId, message_handler, 
     type_subscription
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 from base_models import AnalysisTask, ModelAnalysis, ConsistencyResult
-from ScoreCalculator import ScoreCalculator
 
 
 @type_subscription(topic_type="consistency")
@@ -14,7 +13,6 @@ class InternalConsistencyAgent(RoutedAgent):
     def __init__(self, model_client: ChatCompletionClient):
         super().__init__("Evaluates internal content and reasoning consistency")
         self._model_client = model_client
-        self._calculator = ScoreCalculator()
         self._system_message = SystemMessage(content="""You are a medical consistency evaluation expert.
                     Analyze the internal consistency of each model's response independently.
 

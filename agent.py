@@ -4,60 +4,6 @@ from base_models import TaskAllocationRequest, TaskAllocation
 import json
 
 
-def parse_model_response(response, model_name):
-    """
-    Parse a model response, handling both JSON and plain-text formats.
-
-    Args:
-        response: model response object with a `.content` attribute
-        model_name: reviewer model name (e.g. Claude, DeepSeek, GPT-4o, Gemini)
-
-    Returns:
-        dict with keys: verdict, reasoning, suggestion
-    """
-    print(f"Raw response from {model_name}: {response}")
-
-    if not hasattr(response, "content"):
-        print(f"{model_name} returned an unexpected format. No `.content` attribute found.")
-        return {
-            "verdict": "NAN",
-            "reasoning": "Model response format invalid.",
-            "suggestion": "Please check model output."
-        }
-
-    try:
-        review_content = json.loads(response.content)
-        return {
-            "verdict": review_content.get("verdict", "reject"),
-            "reasoning": review_content.get("reasoning", "No reasoning provided."),
-            "suggestion": review_content.get("suggestion", "")
-        }
-
-    except json.JSONDecodeError:
-        content = response.content.strip()
-        start_idx = content.find('{')
-        end_idx = content.rfind('}')
-
-        if start_idx != -1 and end_idx != -1:
-            json_str = content[start_idx:end_idx + 1]
-            review_content = json.loads(json_str)
-            verdict = review_content.get("verdict", "").lower()
-            if verdict in ["approve", "accept", "yes", "agreed"]:
-                verdict = "approve"
-            else:
-                verdict = "reject"
-            return {
-                "verdict": verdict,
-                "reasoning": review_content.get("reasoning", "No reasoning provided."),
-                "suggestion": review_content.get("suggestion", "")
-            }
-
-        # No JSON found — default to reject
-        return {
-            "verdict": "reject",
-            "reasoning": content,
-            "suggestion": ""
-        }
 @type_subscription(topic_type="task_allocation")
 class TaskAllocationAgent(RoutedAgent):
     """Agent responsible for analyzing questions and allocating to specialized agents"""

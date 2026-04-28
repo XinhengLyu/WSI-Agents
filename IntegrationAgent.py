@@ -1,7 +1,6 @@
 import asyncio
 import json
 from typing import Dict, Tuple
-from agent import parse_model_response
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 from ScoreCalculator import ScoreCalculator
 from base_models import VerificationResult, ConsistencyResult, ClassifierVerificationResult, ModelReliability, \
@@ -10,15 +9,58 @@ from autogen_core import MessageContext, RoutedAgent, TopicId, message_handler, 
 from config import Config
 
 
+def _parse_review_response(response, reviewer_id: str) -> Dict:
+    """Parse a reviewer model's verdict, handling both raw JSON and embedded JSON.
+
+    Returns a dict with keys: verdict (approve|reject), reasoning, suggestion.
+    """
+    print(f"Raw response from {reviewer_id}: {response}")
+
+    if not hasattr(response, "content"):
+        print(f"{reviewer_id} returned an unexpected format. No `.content` attribute found.")
+        return {
+            "verdict": "reject",
+            "reasoning": "Model response format invalid.",
+            "suggestion": "Please check model output.",
+        }
+
+    try:
+        review_content = json.loads(response.content)
+        verdict = review_content.get("verdict", "reject").lower()
+        return {
+            "verdict": "approve" if verdict in ("approve", "accept", "yes", "agreed") else "reject",
+            "reasoning": review_content.get("reasoning", "No reasoning provided."),
+            "suggestion": review_content.get("suggestion", ""),
+        }
+    except json.JSONDecodeError:
+        content = response.content.strip()
+        start_idx = content.find('{')
+        end_idx = content.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            try:
+                review_content = json.loads(content[start_idx:end_idx + 1])
+                verdict = review_content.get("verdict", "").lower()
+                return {
+                    "verdict": "approve" if verdict in ("approve", "accept", "yes", "agreed") else "reject",
+                    "reasoning": review_content.get("reasoning", "No reasoning provided."),
+                    "suggestion": review_content.get("suggestion", ""),
+                }
+            except json.JSONDecodeError:
+                pass
+        return {"verdict": "reject", "reasoning": content, "suggestion": ""}
+
+
 @type_subscription(topic_type="integration")
 class IntegrationAgent(RoutedAgent):
     """Agent responsible for merging and integrating analysis results"""
+
+    PRIMARY_MODEL_KEY = "gpt-4o"
 
     def __init__(self, model_clients: Dict[str, ChatCompletionClient]):
         super().__init__("Integrates and merges model outputs")
 
         self._model_clients = model_clients
-        self._model_client = model_clients["gpt-4o"]
+        self._model_client = model_clients[self.PRIMARY_MODEL_KEY]
         self._calculator = ScoreCalculator()
         self._pending_results = {}  # Store pending results by session
 
@@ -195,8 +237,7 @@ class IntegrationAgent(RoutedAgent):
             print(f"Waiting for: {required - results.keys()}")
             return
         # Classifier is optional: tasks that skip it (e.g. Treatment) proceed without it
-        task_name = Config._task_name
-        needs_classifier = task_name != "Treatment"
+        needs_classifier = Config.TASK_NAME != "Treatment"
         if needs_classifier and not has_classifier:
             print(f"Waiting for classifier result for session {session_id}")
             return
@@ -209,45 +250,34 @@ class IntegrationAgent(RoutedAgent):
             classifier_result   = results.get('classifier')   # None for Treatment
             analysis_task       = results['analysis_task']
 
-            def _classifier_score(model_result):
-                return model_result.classifier_verification_score if classifier_result else None
+            # If classifier produced no predictions for this case, treat it as
+            # "classifier unavailable" and fall back to the 6/4 reweighting that
+            # Treatment uses, instead of penalising the model with CVS = 0.
+            if (classifier_result is not None
+                    and not classifier_result.mllm1_result.classifier_predictions):
+                print(f"No classifier predictions for session {session_id} — "
+                      f"falling back to non-classifier scoring (6/4 reweight).")
+                classifier_result = None
+
+            def _classifier_score(mllm_key: str):
+                """CVS for a given mllm key, or None when classifier was not used."""
+                if classifier_result is None:
+                    return None
+                return getattr(classifier_result, f"{mllm_key}_result").classifier_verification_score
 
             # Compute reliability scores for each model
-            model_reliabilities = {
-                "mllm1": ModelReliability(
-                    knowledge_score=verification_result.mllm1_validation.score,
-                    consistency_score=consistency_result.mllm1_analysis.consistency_score,
-                    classifier_score=_classifier_score(classifier_result.mllm1_result) if classifier_result else 0.0,
-                    final_score=self._calculator.calculate_final_score(
-                        verification_result.mllm1_validation.score,
-                        consistency_result.mllm1_analysis.consistency_score,
-                        _classifier_score(classifier_result.mllm1_result) if classifier_result else None,
-                    ),
-                    assessment_details="MLLM_1 analysis reliability assessment"
-                ),
-                "mllm2": ModelReliability(
-                    knowledge_score=verification_result.mllm2_validation.score,
-                    consistency_score=consistency_result.mllm2_analysis.consistency_score,
-                    classifier_score=_classifier_score(classifier_result.mllm2_result) if classifier_result else 0.0,
-                    final_score=self._calculator.calculate_final_score(
-                        verification_result.mllm2_validation.score,
-                        consistency_result.mllm2_analysis.consistency_score,
-                        _classifier_score(classifier_result.mllm2_result) if classifier_result else None,
-                    ),
-                    assessment_details="MLLM_2 analysis reliability assessment"
-                ),
-                "mllm3": ModelReliability(
-                    knowledge_score=verification_result.mllm3_validation.score,
-                    consistency_score=consistency_result.mllm3_analysis.consistency_score,
-                    classifier_score=_classifier_score(classifier_result.mllm3_result) if classifier_result else 0.0,
-                    final_score=self._calculator.calculate_final_score(
-                        verification_result.mllm3_validation.score,
-                        consistency_result.mllm3_analysis.consistency_score,
-                        _classifier_score(classifier_result.mllm3_result) if classifier_result else None,
-                    ),
-                    assessment_details="MLLM_3 analysis reliability assessment"
-                ),
-            }
+            model_reliabilities = {}
+            for mllm_key in ("mllm1", "mllm2", "mllm3"):
+                k_score = getattr(verification_result, f"{mllm_key}_validation").score
+                c_score = getattr(consistency_result,  f"{mllm_key}_analysis").consistency_score
+                cls_score = _classifier_score(mllm_key)
+                model_reliabilities[mllm_key] = ModelReliability(
+                    knowledge_score=k_score,
+                    consistency_score=c_score,
+                    classifier_score=cls_score,
+                    final_score=self._calculator.calculate_final_score(k_score, c_score, cls_score),
+                    assessment_details=f"{mllm_key.upper()} analysis reliability assessment",
+                )
 
             # Select best-scoring model
             best_model_reliability, best_model, best_score = self._select_best_response(model_reliabilities)
@@ -387,7 +417,7 @@ class IntegrationAgent(RoutedAgent):
             prompt: str,
             reviewer_id: str
     ) -> Dict:
-        """Get review for enhancement from individual model"""
+        """Ask a single reviewer model to approve or reject the proposed enhancement."""
         review_prompt = f"""
         Review this enhanced response.
         {prompt}
@@ -411,7 +441,61 @@ class IntegrationAgent(RoutedAgent):
             json_output=True
         )
 
-        return parse_model_response(response, reviewer_id)
+        return _parse_review_response(response, reviewer_id)
+
+    async def _generate_enhancement(self, prompt: str) -> str:
+        """Run the primary model to produce an enhanced response."""
+        result = await self._model_client.create(
+            messages=[
+                self._system_message,
+                UserMessage(content=prompt, source=self.id.type),
+            ],
+            json_output=True,
+        )
+        return json.loads(result.content)['merged_analysis']['refined_response']
+
+    async def _revise_enhancement(
+            self,
+            enhanced_response: str,
+            reviews: list,
+            base_response: str,
+    ) -> str:
+        """Have the primary model revise an enhancement using reviewer feedback."""
+        rejection_feedback = [
+            {
+                'reviewer': idx,
+                'reasoning': review['reasoning'],
+                'suggestion': review['suggestion'],
+            }
+            for idx, review in enumerate(reviews)
+            if review['verdict'] == 'reject'
+        ]
+        revision_prompt = f"""
+        Revise the enhanced response based on reviewer feedback.
+        Current Response: {enhanced_response}
+
+        Reviewer Feedback:
+        {json.dumps(rejection_feedback, indent=2)}
+
+        Original Response Style Reference:
+        {base_response}
+
+        You MUST provide your revised response in this JSON format:
+        {{
+            "merged_analysis": {{
+                "original_response": "the current response",
+                "refined_response": "the revised response maintaining original style"
+            }}
+        }}
+        """
+        result = await self._model_client.create(
+            messages=[
+                self._system_message,
+                UserMessage(content=revision_prompt, source=self.id.type),
+            ],
+            json_output=True,
+        )
+        return json.loads(result.content)['merged_analysis']['refined_response']
 
     async def _enhance_with_verification(
             self,
@@ -421,82 +505,45 @@ class IntegrationAgent(RoutedAgent):
             model_clients: Dict[str, ChatCompletionClient],
             max_revisions: int = 3
     ) -> str:
-        """Enhance response with verification from multiple models"""
-        current_response = refined_response
-        revision_count = 0
+        """Iteratively enhance the refined response and validate it via reviewer models.
 
-        while revision_count < max_revisions:
-            # Create enhancement prompt
+        On each iteration we propose an enhanced candidate, ask the reviewer models
+        to vote, and either accept it (unanimous approval or last iteration) or
+        revise based on rejection feedback before re-enhancing on the next pass.
+
+        `base_response` carries the candidate that the next enhancement will be
+        built on (initially the refined output, then revised versions).
+        `enhanced` is the proposed augmented version produced this iteration.
+        """
+        # Reviewer panel = all clients except the primary one used to generate.
+        reviewers = [(k, c) for k, c in model_clients.items() if k != self.PRIMARY_MODEL_KEY]
+        if not reviewers:
+            return refined_response
+
+        base_response = refined_response
+        for iteration in range(max_revisions):
             enhancement_prompt = self._create_enhancement_prompt(
-                current_response,
-                model_responses,
-                best_model
+                base_response, model_responses, best_model
             )
+            if not enhancement_prompt:  # No other responses to draw from
+                return base_response
 
-            if not enhancement_prompt:  # No other responses to enhance with
-                return current_response
+            enhanced = await self._generate_enhancement(enhancement_prompt)
 
-            # Get initial enhancement
-            enhanced_response_result = await model_clients["gpt-4o"].create(
-                messages=[
-                    self._system_message,
-                    UserMessage(content=enhancement_prompt, source=self.id.type)
-                ],
-                json_output=True
-            )
-            enhanced_result = json.loads(enhanced_response_result.content)
-            enhanced_response = enhanced_result['merged_analysis']['refined_response']
-
-            # Get reviews from other models
             reviews = await asyncio.gather(*[
                 self._get_enhancement_review(
                     client,
-                    enhancement_prompt + f"\nProposed Enhancement:\n{enhanced_response}",
-                    reviewer_id
+                    enhancement_prompt + f"\nProposed Enhancement:\n{enhanced}",
+                    reviewer_id,
                 )
-                for reviewer_id, client in list(model_clients.items())[1:]  # Skip primary model
+                for reviewer_id, client in reviewers
             ])
+            approved_count = sum(1 for r in reviews if r["verdict"] == "approve")
 
-            # Count approvals
-            approved_count = sum(1 for review in reviews if review["verdict"] == "approve")
+            is_last_iteration = iteration == max_revisions - 1
+            if approved_count >= len(reviews) or is_last_iteration:
+                return enhanced
 
-            if approved_count >= 3 or revision_count >= max_revisions - 1:
-                return enhanced_response
+            base_response = await self._revise_enhancement(enhanced, reviews, base_response)
 
-            # Need revision - collect feedback
-            revision_prompt = f"""
-            Revise the enhanced response based on reviewer feedback.
-            Current Response: {enhanced_response}
-
-            Reviewer Feedback:
-            {json.dumps([{
-                'reviewer': idx,
-                'reasoning': review['reasoning'],
-                'suggestion': review['suggestion']
-            } for idx, review in enumerate(reviews) if review['verdict'] == 'reject'], indent=2)}
-
-            Original Response Style Reference:
-            {current_response}
-
-            You MUST provide your revised response in this JSON format:
-            {{
-                "merged_analysis": {{
-                    "original_response": "the current response",
-                    "refined_response": "the revised response maintaining original style"
-                }}
-            }}
-            """
-
-            revision_response = await model_clients["gpt-4o"].create(
-                messages=[
-                    self._system_message,
-                    UserMessage(content=revision_prompt, source=self.id.type)
-                ],
-                json_output=True
-            )
-
-            revised_result = json.loads(revision_response.content)
-            current_response = revised_result['merged_analysis']['refined_response']
-            revision_count += 1
-
-        return current_response
+        return base_response  # safety net: never reached in practice

@@ -61,7 +61,7 @@ async def demo_task(task_name: str, questions_file: str) -> bool:
         print(f"[SKIP] No cases found for {task_name}.")
         return False
 
-    # Pick the first case
+    # Pick the case that production would process first (run_task iterates in reversed order)
     case = cases[-1]
     print(f"Case ID  : {case['id']}")
     print(f"Question : {case['question'][:120]}...")
