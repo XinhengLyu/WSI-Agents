@@ -46,13 +46,11 @@ The architecture consists of three core components:
 
 ---
 
-> **Note**: The code is currently being organized and will be updated soon.
-
 ## 🛠️ Installation
 
 ```bash
 git clone https://github.com/XinhengLyu/WSI-Agents
-cd WSI_Agents
+cd WSI-Agents
 
 conda create -n WSI_Agents python=3.10 -y
 conda activate WSI_Agents
@@ -97,10 +95,12 @@ You can use any pathology reference text you have legal access to — the build 
 
 ## 📊 Data Preparation
 
-Questions and MLLM answers are stored in separate files:
+Data directories live next to the cloned `WSI-Agents/` repo (one level up from the source code):
 
 ```
-autogen/
+<parent-dir>/
+├── WSI-Agents/                     this repository
+│
 ├── questions/                      One file per task type {"question_id", "prompt"}
 │   ├── Morphology-questions.jsonl
 │   ├── Diagnosis-questions.jsonl
@@ -147,8 +147,14 @@ TASK_MLLM_KEYS = {
 # Run all task types
 python run_experiments.py
 
+# Run a single task type
+python run_experiments.py Diagnosis
+
 # Run a demo (1 case per task type, outputs to demo_output/)
 python run_demo.py
+
+# Run tests
+python -m pytest tests/
 ```
 
 ---
